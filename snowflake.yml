@@ -1,0 +1,13 @@
+definition_version: 2
+entities:
+  document_extraction_poc:
+    type: streamlit
+    identifier:
+      name: DOCUMENT_EXTRACTION_POC
+      database: DEMOAPP
+      schema: DOCUMENT_EXTRACTION
+    query_warehouse: DEMOAPP
+    main_file: streamlit_app.py
+    artifacts:
+      - streamlit_app.py
+      - environment.yml
