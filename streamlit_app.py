@@ -210,8 +210,7 @@ def display_images_from_result(result: dict, session=None, filename: str = None)
                         
                         st.image(
                             base64.b64decode(base64_data),
-                            caption=f"Image {img_id} (Page {page_num})",
-                            width="stretch"
+                            caption=f"Image {img_id} (Page {page_num})"
                         )
                         
                         if session and filename:
