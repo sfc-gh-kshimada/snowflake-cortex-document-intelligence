@@ -52,12 +52,12 @@ Snowflake CLI不要。Snowsight上で完結します。
 Snowsight のワークシートで以下を実行:
 
 ```sql
--- データベース・スキーマ作成
-CREATE DATABASE IF NOT EXISTS <YOUR_DATABASE>;
-CREATE SCHEMA IF NOT EXISTS <YOUR_DATABASE>.<YOUR_SCHEMA>;
+-- データベース・スキーマ作成 (例: DEMOAPP.DOCUMENT_EXTRACTION)
+CREATE DATABASE IF NOT EXISTS DEMOAPP;
+CREATE SCHEMA IF NOT EXISTS DEMOAPP.DOCUMENT_EXTRACTION;
 
 -- ファイル保存用ステージ作成
-CREATE STAGE IF NOT EXISTS <YOUR_DATABASE>.<YOUR_SCHEMA>.papers
+CREATE STAGE IF NOT EXISTS DEMOAPP.DOCUMENT_EXTRACTION.papers
   DIRECTORY = (ENABLE = TRUE)
   ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE');
 ```
@@ -67,7 +67,7 @@ CREATE STAGE IF NOT EXISTS <YOUR_DATABASE>.<YOUR_SCHEMA>.papers
 1. Snowsight 左メニュー → **Streamlit** → **+ Streamlit App**
 2. 以下を設定:
    - **App name**: `DOCUMENT_EXTRACTION_POC`
-   - **App location**: `<YOUR_DATABASE>.<YOUR_SCHEMA>`
+   - **App location**: `DEMOAPP.DOCUMENT_EXTRACTION`
    - **Warehouse**: `<YOUR_WAREHOUSE>`
 3. **Create** をクリック
 
@@ -75,10 +75,11 @@ CREATE STAGE IF NOT EXISTS <YOUR_DATABASE>.<YOUR_SCHEMA>.papers
 
 1. エディタが開いたら、デフォルトコードを全て削除
 2. `streamlit_app.py` の内容を全てコピー＆ペースト
-3. **14行目**のステージ名を変更:
+3. **15行目**のステージ名はデフォルトで以下が設定済み:
    ```python
-   STAGE_NAME = "<YOUR_DATABASE>.<YOUR_SCHEMA>.papers"
+   STAGE_NAME = "DEMOAPP.DOCUMENT_EXTRACTION.papers"
    ```
+   別のステージを使用する場合のみ変更してください。
 4. **Run** をクリック
 
 #### Step 4: パッケージ設定
@@ -103,17 +104,20 @@ cd snowflake-cortex-document-intelligence
 #### Step 2: Snowflake オブジェクト作成
 
 ```sql
-CREATE DATABASE IF NOT EXISTS <YOUR_DATABASE>;
-CREATE SCHEMA IF NOT EXISTS <YOUR_DATABASE>.<YOUR_SCHEMA>;
+-- デフォルト設定を使用する場合
+CREATE DATABASE IF NOT EXISTS DEMOAPP;
+CREATE SCHEMA IF NOT EXISTS DEMOAPP.DOCUMENT_EXTRACTION;
 
-CREATE STAGE IF NOT EXISTS <YOUR_DATABASE>.<YOUR_SCHEMA>.papers
+CREATE STAGE IF NOT EXISTS DEMOAPP.DOCUMENT_EXTRACTION.papers
   DIRECTORY = (ENABLE = TRUE)
   ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE');
 ```
 
-#### Step 3: 設定ファイル編集
+#### Step 3: 設定ファイル編集 (デフォルト以外を使用する場合のみ)
 
-**snowflake.yml**
+デフォルト (`DEMOAPP.DOCUMENT_EXTRACTION`) を使用する場合、編集不要です。
+
+**snowflake.yml** (変更する場合)
 ```yaml
 definition_version: 2
 entities:
@@ -121,18 +125,18 @@ entities:
     type: streamlit
     identifier:
       name: DOCUMENT_EXTRACTION_POC
-      database: <YOUR_DATABASE>       # ← 変更
-      schema: <YOUR_SCHEMA>           # ← 変更
-    query_warehouse: <YOUR_WAREHOUSE> # ← 変更
+      database: DEMOAPP                  # デフォルト
+      schema: DOCUMENT_EXTRACTION        # デフォルト
+    query_warehouse: <YOUR_WAREHOUSE>    # ← 要変更
     main_file: streamlit_app.py
     artifacts:
       - streamlit_app.py
       - environment.yml
 ```
 
-**streamlit_app.py (14行目)**
+**streamlit_app.py (15行目)** - デフォルト設定済み
 ```python
-STAGE_NAME = "<YOUR_DATABASE>.<YOUR_SCHEMA>.papers"
+STAGE_NAME = "DEMOAPP.DOCUMENT_EXTRACTION.papers"
 ```
 
 #### Step 4: デプロイ

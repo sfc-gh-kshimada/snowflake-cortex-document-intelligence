@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import base64
+import io
 from datetime import datetime
 
 st.set_page_config(
@@ -107,8 +108,9 @@ def upload_to_stage(file, session) -> str:
     file_bytes = file.read()
     file.seek(0)
     
+    input_stream = io.BytesIO(file_bytes)
     session.file.put_stream(
-        file,
+        input_stream,
         f"@{STAGE_NAME}/{file.name}",
         auto_compress=False,
         overwrite=True
@@ -212,22 +214,62 @@ def display_images_from_result(result: dict, session=None, filename: str = None)
                             use_column_width=True
                         )
                         
-                        explain_key = f"img_explain_{img_idx}"
-                        
                         if session and filename:
                             if st.button("🔍 解説", key=f"explain_img_{img_idx}"):
-                                with st.spinner("画像を解説中..."):
-                                    try:
-                                        prompt = f"このドキュメントのPage {page_num}にある画像(ID: {img_id})について、文脈を踏まえて詳しく解説してください。図表の場合は、データの意味や傾向も説明してください。"
-                                        explain_result = run_ai_complete(session, filename, prompt, "gemini-3-pro")
-                                        if isinstance(explain_result, str):
-                                            explain_result = explain_result.replace("\\n", "\n").strip('"')
-                                        st.session_state[explain_key] = explain_result
-                                    except Exception as e:
-                                        st.session_state[explain_key] = f"解説エラー: {e}"
-                            
-                            if explain_key in st.session_state:
-                                st.info(st.session_state[explain_key])
+                                st.session_state[f"explain_requested_{img_idx}"] = True
+                                st.toast(f"⬇️ Image {img_id} の解説を下に表示しました", icon="📖")
+        
+        if session and filename:
+            has_explanations = False
+            for row_idx, row in enumerate(rows):
+                for col_idx, img in enumerate(row):
+                    img_idx = row_idx * num_cols + col_idx
+                    explain_key = f"img_explain_{img_idx}"
+                    if explain_key in st.session_state and st.session_state[explain_key]:
+                        has_explanations = True
+                        break
+            
+            if has_explanations:
+                st.divider()
+                st.subheader("📖 画像解説")
+            
+            for row_idx, row in enumerate(rows):
+                for col_idx, img in enumerate(row):
+                    img_idx = row_idx * num_cols + col_idx
+                    page_num = img.get("page", "?")
+                    img_id = img.get("id", img_idx + 1)
+                    explain_key = f"img_explain_{img_idx}"
+                    sql_key = f"img_sql_{img_idx}"
+                    
+                    if st.session_state.get(f"explain_requested_{img_idx}"):
+                        st.session_state[f"explain_requested_{img_idx}"] = False
+                        with st.spinner(f"Image {img_id} を解説中..."):
+                            try:
+                                prompt = f"このドキュメントのPage {page_num}にある画像(ID: {img_id})について、文脈を踏まえて詳しく解説してください。図表の場合は、データの意味や傾向も説明してください。"
+                                prompt_escaped = prompt.replace("'", "''")
+                                sql = f"""SELECT AI_COMPLETE(
+    MODEL => 'gemini-3-pro',
+    PROMPT => PROMPT(
+        '{prompt_escaped} {{0}}',
+        TO_FILE('@{STAGE_NAME}', '{filename}')
+    )
+) AS result"""
+                                explain_result = run_ai_complete(session, filename, prompt, "gemini-3-pro")
+                                if isinstance(explain_result, str):
+                                    explain_result = explain_result.replace("\\n", "\n").strip('"')
+                                st.session_state[explain_key] = explain_result
+                                st.session_state[sql_key] = sql
+                            except Exception as e:
+                                st.session_state[explain_key] = f"解説エラー: {e}"
+                                st.session_state[sql_key] = ""
+                    
+                    if explain_key in st.session_state and st.session_state[explain_key]:
+                        st.markdown(f"#### Image {img_id} (Page {page_num})")
+                        st.markdown(st.session_state[explain_key])
+                        if sql_key in st.session_state and st.session_state[sql_key]:
+                            with st.expander("🔧 実行SQL"):
+                                st.code(st.session_state[sql_key], language="sql")
+                        st.divider()
 
 
 with st.sidebar:
