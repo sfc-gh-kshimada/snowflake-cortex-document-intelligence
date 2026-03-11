@@ -141,6 +141,65 @@ STAGE_NAME = "<YOUR_DATABASE>.<YOUR_SCHEMA>.papers"
 snow streamlit deploy --connection <YOUR_CONNECTION> --replace
 ```
 
+---
+
+### 方法3: SPCS (Container Runtime) でデプロイ
+
+External Access Integration (EAI) が利用可能な環境では、Snowpark Container Services を使用してコンテナランタイムでデプロイできます。PyPI からのパッケージインストールが可能になり、より柔軟な依存関係管理ができます。
+
+#### 前提条件
+
+- External Access Integration が設定済み
+- Compute Pool が作成済み
+
+#### Step 1: Compute Pool 作成 (未作成の場合)
+
+```sql
+CREATE COMPUTE POOL IF NOT EXISTS <YOUR_COMPUTE_POOL>
+  MIN_NODES = 1
+  MAX_NODES = 5
+  INSTANCE_FAMILY = CPU_X64_XS;
+```
+
+#### Step 2: snowflake.yml を編集
+
+```yaml
+definition_version: 2
+entities:
+  document_extraction_poc:
+    type: streamlit
+    identifier:
+      name: DOCUMENT_EXTRACTION_POC
+      database: <YOUR_DATABASE>
+      schema: <YOUR_SCHEMA>
+    query_warehouse: <YOUR_WAREHOUSE>
+    compute_pool: <YOUR_COMPUTE_POOL>                    # ← 追加
+    runtime_name: SYSTEM$ST_CONTAINER_RUNTIME_PY3_11     # ← 追加
+    main_file: streamlit_app.py
+    artifacts:
+      - streamlit_app.py
+      - pyproject.toml                                   # ← environment.yml の代わり
+```
+
+#### Step 3: pyproject.toml で依存関係を指定
+
+```toml
+[project]
+name = "document_extraction_poc"
+version = "1.0.0"
+dependencies = [
+    "streamlit>=1.35.0"
+]
+```
+
+#### Step 4: デプロイ
+
+```bash
+snow streamlit deploy --connection <YOUR_CONNECTION> --replace
+```
+
+> **Note**: EAI が未設定の場合、PyPI へのアクセスエラーが発生します。その場合は方法1または方法2 (Warehouse ベース) をご利用ください。
+
 ## 使い方
 
 1. Snowsight でアプリにアクセス

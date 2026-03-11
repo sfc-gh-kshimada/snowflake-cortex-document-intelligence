@@ -212,6 +212,8 @@ def display_images_from_result(result: dict, session=None, filename: str = None)
                             use_column_width=True
                         )
                         
+                        explain_key = f"img_explain_{img_idx}"
+                        
                         if session and filename:
                             if st.button("🔍 解説", key=f"explain_img_{img_idx}"):
                                 with st.spinner("画像を解説中..."):
@@ -220,9 +222,12 @@ def display_images_from_result(result: dict, session=None, filename: str = None)
                                         explain_result = run_ai_complete(session, filename, prompt, "gemini-3-pro")
                                         if isinstance(explain_result, str):
                                             explain_result = explain_result.replace("\\n", "\n").strip('"')
-                                        st.info(explain_result)
+                                        st.session_state[explain_key] = explain_result
                                     except Exception as e:
-                                        st.error(f"解説エラー: {e}")
+                                        st.session_state[explain_key] = f"解説エラー: {e}"
+                            
+                            if explain_key in st.session_state:
+                                st.info(st.session_state[explain_key])
 
 
 with st.sidebar:
@@ -368,44 +373,52 @@ with tab1:
                     if isinstance(result, str):
                         result = json.loads(result)
                     
-                    if "errorInformation" in result:
-                        st.error(f"エラー: {result['errorInformation']}")
-                    else:
-                        st.success("✅ パース完了")
-                        
-                        if "pages" in result:
-                            st.subheader(f"📑 ページ数: {len(result['pages'])}")
-                            
-                            for page in result["pages"]:
-                                page_num = page.get("index", 0) + 1
-                                content = page.get("content", "")
-                                with st.expander(f"📄 ページ {page_num} ({len(content):,} 文字)", expanded=(page_num == 1)):
-                                    st.text_area(
-                                        label=f"ページ {page_num} 内容",
-                                        value=content,
-                                        height=400,
-                                        label_visibility="collapsed",
-                                        key=f"page_content_{page_num}"
-                                    )
-                        else:
-                            content = result.get("content", "")
-                            st.subheader(f"📄 抽出テキスト ({len(content):,} 文字)")
-                            st.text_area(
-                                label="抽出テキスト",
-                                value=content,
-                                height=500,
-                                label_visibility="collapsed",
-                                key="full_content"
-                            )
-                        
-                        if extract_images:
-                            display_images_from_result(result, session, filename)
-                        
-                        with st.expander("🔧 生のJSON出力"):
-                            st.json(result)
-                            
+                    st.session_state["parse_result"] = result
+                    st.session_state["parse_filename"] = filename
+                    st.session_state["parse_extract_images"] = extract_images
+                    
                 except Exception as e:
                     st.error(f"エラー: {e}")
+        
+        if "parse_result" in st.session_state and st.session_state.get("parse_filename") == filename:
+            result = st.session_state["parse_result"]
+            stored_extract_images = st.session_state.get("parse_extract_images", False)
+            
+            if "errorInformation" in result:
+                st.error(f"エラー: {result['errorInformation']}")
+            else:
+                st.success("✅ パース完了")
+                
+                if "pages" in result:
+                    st.subheader(f"📑 ページ数: {len(result['pages'])}")
+                    
+                    for page in result["pages"]:
+                        page_num = page.get("index", 0) + 1
+                        content = page.get("content", "")
+                        with st.expander(f"📄 ページ {page_num} ({len(content):,} 文字)", expanded=(page_num == 1)):
+                            st.text_area(
+                                label=f"ページ {page_num} 内容",
+                                value=content,
+                                height=400,
+                                label_visibility="collapsed",
+                                key=f"page_content_{page_num}"
+                            )
+                else:
+                    content = result.get("content", "")
+                    st.subheader(f"📄 抽出テキスト ({len(content):,} 文字)")
+                    st.text_area(
+                        label="抽出テキスト",
+                        value=content,
+                        height=500,
+                        label_visibility="collapsed",
+                        key="full_content"
+                    )
+                
+                if stored_extract_images:
+                    display_images_from_result(result, session, filename)
+                
+                with st.expander("🔧 生のJSON出力"):
+                    st.json(result)
 
 
 with tab2:
