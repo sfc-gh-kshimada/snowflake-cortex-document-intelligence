@@ -228,14 +228,6 @@ snow streamlit deploy --connection <YOUR_CONNECTION> --replace
 └── README.md           # このファイル
 ```
 
-## 制限事項
-
-| 項目 | 制限 |
-|------|------|
-| AI_COMPLETE | モデルごとにファイルサイズ・形式制限あり |
-| AI_PARSE_DOCUMENT | 画像抽出は PDF のみ対応 |
-| AI_EXTRACT | 100MB 以下 |
-
 ## 参考ドキュメント
 
 - [AI_COMPLETE with documents](https://docs.snowflake.com/en/user-guide/snowflake-cortex/ai-complete-document-intelligence)
